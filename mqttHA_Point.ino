@@ -13,10 +13,10 @@
 String pointID;
 char red[5];
 const char* ssid = "ssid";
-const char* password = "pw";
-const char* mqttUser = "mqttUser";
-const char* mqttPw = "mqttPw";
-IPAddress mqtt_server(192,168,4,80);
+const char* password = "password";
+const char* mqttUser = "mqtt User";
+const char* mqttPw = "mqtt pw";
+IPAddress mqtt_server(192,168,4,800);
 
 WiFiClient espClient;
 //PubSubClient client(espClient);
@@ -71,6 +71,7 @@ void callback(char* topic, byte* payload, unsigned int lent) {
     Serial. println("new device message recvd");
     redEEPromWrite(String(payloadString));
     Serial. println("Point ID written to EEPROM");
+    while (1){}
       
   }
 
