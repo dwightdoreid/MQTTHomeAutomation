@@ -5,24 +5,24 @@
 #include <EEPROM.h>
 
 // Update these with values suitable for your network.
+ESP8266WebServer server(80);
+IPAddress mqtt_server(192,168,0,100);
 
 String pointID;
 char red[5];
 const char* mqttUser = "mqttUser";
 const char* mqttPw = "mqttuser";
 const char* ssid = "test";
-const char* passphrase = "testpassword1";
+const char* passphrase = "testpassword";
 String esid;
 String epass = "";
 
 String st;
 String content;
 int statusCode;
-ESP8266WebServer server(80);
-IPAddress mqtt_server(192,168,0,100);
+
 
 WiFiClient espClient;
-//PubSubClient client(espClient);
 void callback(char* topic, byte* payload, unsigned int lent);
 PubSubClient client(mqtt_server, 1883, callback, espClient);
 long lastMsg = 0;
@@ -55,11 +55,9 @@ void setup_wifi() {
          if (testWifi()) {
           Serial.println("");
           Serial.println("Connected to wifi network :/ ");
-          launchWeb(0);
           return;
         } 
-  //}
-  setupAP();
+  
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool testWifi(void) {
@@ -94,12 +92,11 @@ void launchWeb(int webtype) {
   Serial.println(WiFi.softAPIP());
   createWebServer(webtype);
   // Start the server
-  server.begin();
+  server.begin(); 
   Serial.println("Server started"); 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void setupAP(void) {
-  client.disconnect();
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
@@ -139,8 +136,7 @@ void setupAP(void) {
     }
   st += "</ol>";
   delay(100);
-  //WiFi.softAP(ssid, passphrase, 6);
-  WiFi.softAP(ssid);
+  WiFi.softAP(ssid, passphrase, 6);
   Serial.println("softap");
   launchWeb(1);
   Serial.println("over");
@@ -152,6 +148,8 @@ void createWebServer(int webtype)
     Serial.println("");
     Serial.println("webtype 1 selected");
     server.on("/", []() {
+        Serial.println("");
+        Serial.println("server received /");
         IPAddress ip = WiFi.softAPIP();
         String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
         content = "<!DOCTYPE HTML>\r\n<html>Hello from ESP8266 at ";
@@ -198,6 +196,8 @@ void createWebServer(int webtype)
         server.send(statusCode, "application/json", content);
     });
   } else if (webtype == 0) {
+    Serial.println("");
+    Serial.println("webtype 0 selected");
     server.on("/", []() {
       IPAddress ip = WiFi.localIP();
       String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
@@ -325,6 +325,22 @@ void reconnect() {
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
+  //pinMode(0, INPUT);
+  pinMode(2, INPUT);
+  WiFi.begin();
+  delay(1000);
+  Serial.println("");
+  Serial.println("delay done");
+  Serial.println(digitalRead(2));
+   if (digitalRead(2)==false)
+  { 
+    Serial.println("button pressed at beginning");
+    delay(250);
+     if (digitalRead(2)==true)setupAP();
+     while(1){server.handleClient();delay(10);}
+    
+  }
+  else{
   Serial.println(""); 
   redEEPromRead();
   Serial.println("");
@@ -335,44 +351,29 @@ void setup() {
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   pinMode(0, INPUT);
-  reconnect();
+  delay(1000);
+  reconnect();}
   
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
 
-//  if (!client.connect("arduinoClient", "mqttUser", "mqttuse")) {
-//    reconnect();
-//  }
   if (!client.connected() && (WiFi.status() == WL_CONNECTED)) {
     Serial.println("rwwwiaiau");
     reconnect();
   }
-  /*else
-  {
-     Serial.println("Connected to MQTT server ");
-  }*/
+ 
   
   client.subscribe("inTopic");
   client.loop();
   
-//   if (digitalRead(0)==false)
-//  {
-//    Serial.println("button pressed");
-//    joinControlNet();
-//    delay(250);
-//  }
-
-   if (digitalRead(0)==false){
-    startTime=millis();  
-    while (digitalRead(0)==false){
-        timeHeld=millis()-startTime;
-        Serial.print("Timeheld is: ");
-        Serial.println(timeHeld);        
-     }    
+   if (digitalRead(0)==false)
+  {
+    Serial.println("button pressed");
+    delay(250);
+     if (digitalRead(0)==false)joinControlNet();
+    
   }
-  if (timeHeld>1000) {Serial.println("time is long time");setupAP();}
-  if (timeHeld>50 && timeHeld<750) {Serial.println("time is good");joinControlNet();}
-  timeHeld=0;
+
    
 }
