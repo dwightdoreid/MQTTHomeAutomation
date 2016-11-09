@@ -326,17 +326,17 @@ void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
   //pinMode(0, INPUT);
-  pinMode(2, INPUT);
+  pinMode(4, INPUT);
   WiFi.begin();
   delay(1000);
   Serial.println("");
   Serial.println("delay done");
-  Serial.println(digitalRead(2));
-   if (digitalRead(2)==false)
+  Serial.println(digitalRead(4));
+   if (digitalRead(4)==false)
   { 
     Serial.println("button pressed at beginning");
     delay(250);
-     if (digitalRead(2)==true)setupAP();
+     if (digitalRead(4)==false)setupAP();
      while(1){server.handleClient();delay(10);}
     
   }
@@ -363,8 +363,6 @@ void loop() {
     reconnect();
   }
  
-  
-  client.subscribe("inTopic");
   client.loop();
   
    if (digitalRead(0)==false)
