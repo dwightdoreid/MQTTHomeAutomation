@@ -1,0 +1,5 @@
+{"points":[
+    {"ID":"P001", "Topic":"P001" , "Type":"Lamp", "Desc":"Bedroom"},
+    {"ID":"P002", "Topic":"P002" , "Type":"Dimmer Lamp", "Desc":"Living room 1"},
+    {"ID":"P003", "Topic":"P003" , "Type":"Relay", "Desc":"Living room fan"}
+]}

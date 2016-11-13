@@ -1,0 +1,27 @@
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Controller
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>Controller should manage the allocation of device ID's and handle IFTTT procedures
+----------------------------------------------------------------------------------------------------
+>To GET ID for a new device
+	Device should publish to topic "addDevice" with payload as device type. EG "addDevice/lamp"
+	Controller will respond on topic "newDeviceAdd" with ID for device to take as payload
+		EG "newDeviceAdd/P001"
+
+>To REMOVE a device??
+	Publish to topic "remDevice" with payload as device ID. EG "remDevice/P005"
+	Controller will respond on topic "deviceRem" with ID of device payload. EG "deviceRem/P005"
+
+>To GET ALL devices??
+	Publish to topic "listAllDevices" data is JSON file showing points info. EG "listAllDevices"
+
+>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Point
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>On POWER UP
+	Device will publish on topic "deviceUp" with payload as device ID. EG "deviceUp/P001"
+	
+>To PING device
+	Publish on topic "devicePing" with device ID as payload. EG "devicePing/P001"
+	Device responds on topic "Pinged" with device ID as payload. EG "Pinged/P001"
