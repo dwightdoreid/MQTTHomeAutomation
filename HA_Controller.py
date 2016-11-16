@@ -8,6 +8,7 @@ Created on Sun Nov 13 09:54:29 2016
 import paho.mqtt.client as mqtt
 import time
 
+x=True
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -18,16 +19,21 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("L007")
     client.subscribe("L005")
     client.subscribe("newDevice/#")
-	client.subscribe("remDevice")
+    client.subscribe("remDevice")
+    client.subscribe("$SYS/broker/log/D")
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
+    global x
     print(msg.topic+" "+str(msg.payload))
     if msg.topic=="newDevice":
         print("new device detected")
         time.sleep(1)
         if str(msg.payload) == "lamp/":
-            client.publish("newDeviceAdd",payload="L005",qos=0,retain=False)
+            client.publish("newDeviceAdd",payload="L007",qos=0,retain=False)
+    if msg.topic=="L007":
+        x= not x
+        client.publish("L005",payload=int(x),qos=0,retain=False)
 
 client = mqtt.Client(client_id="ha_cntrlr")
 client.on_connect = on_connect
