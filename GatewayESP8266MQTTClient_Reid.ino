@@ -82,8 +82,8 @@
 #define MY_MQTT_PASSWORD "mqttuser"
 
 // Set WIFI SSID and password
-#define MY_ESP8266_SSID "RHN_2"
-#define MY_ESP8266_PASSWORD "TronicsWare4eva"
+#define MY_ESP8266_SSID "SSID"
+#define MY_ESP8266_PASSWORD "Password"
 
 // Set the hostname for the WiFi Client. This is the hostname
 // it will pass to the DHCP server if not static.
