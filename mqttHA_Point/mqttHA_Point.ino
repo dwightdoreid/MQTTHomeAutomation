@@ -1,7 +1,8 @@
-#include <dummy.h>
+//#include <dummy.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
+#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
+#include <PubSubClient.h>
 #include <EEPROM.h>
 
 // Update these with values suitable for your network.
@@ -31,7 +32,7 @@ int value = 0;
 unsigned long startTime;
 long timeHeld;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-void setup_wifi() {
+void connect2Wifi() {
 
   delay(10);
   WiFi.begin();
@@ -39,28 +40,30 @@ void setup_wifi() {
   Serial.println("Reading EEPROM ssid");
   
   for (int i = 32; i < 64; ++i)
-    {
-      esid += char(EEPROM.read(i));
-    }
+  {
+    esid += char(EEPROM.read(i));
+  }
   Serial.print("SSID: ");
   Serial.println(esid);
-  Serial.println("Reading EEPROM pass");
   
+  Serial.println("Reading EEPROM pass");  
   for (int i = 64; i < 128; ++i)
-    {
-      epass += char(EEPROM.read(i));
-    }
+  {
+    epass += char(EEPROM.read(i));
+  }
   Serial.print("PASS: ");
   Serial.println(epass);  
-         if (testWifi()) {
-          Serial.println("");
-          Serial.println("Connected to wifi network :/ ");
-          return;
-        } 
   
+   if (wifiConnected())
+   {
+    Serial.println("");
+    Serial.println("Connected to wifi network :/ ");
+    return;
+    } 
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool testWifi(void) {
+bool wifiConnected(void) {
   WiFi.mode(WIFI_STA);
   int c = 0;
   if ( esid.length() > 1 ) {
@@ -103,7 +106,9 @@ void setupAP(void) {
   int n = WiFi.scanNetworks();
   Serial.println("scan done");
   if (n == 0)
+  {
     Serial.println("no networks found");
+  }
   else
   {
     Serial.print(n);
@@ -122,19 +127,21 @@ void setupAP(void) {
      }
   }
   Serial.println(""); 
-  st = "<ol>";
+  st = "<select name='ssid' size='5'>";
   for (int i = 0; i < n; ++i)
     {
       // Print SSID and RSSI for each network found
-      st += "<li>";
+      st += "<option value='";
+      st += WiFi.SSID(i);
+      st += "'>";
       st += WiFi.SSID(i);
       st += " (";
       st += WiFi.RSSI(i);
       st += ")";
       st += (WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*";
-      st += "</li>";
+      st += "</option>";
     }
-  st += "</ol>";
+  st += "</select>";
   delay(100);
   WiFi.softAP(ssid, passphrase, 6);
   Serial.println("softap");
@@ -152,11 +159,24 @@ void createWebServer(int webtype)
         Serial.println("server received /");
         IPAddress ip = WiFi.softAPIP();
         String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
-        content = "<!DOCTYPE HTML>\r\n<html>Hello from ESP8266 at ";
+        content = "<!DOCTYPE HTML>";
+        content += "<html>";
+        content += "<head> <meta charset='utf-8'> <meta http-equiv='X-UA-Compatible' content='IE=edge'> <title></title> <meta name='description' content=''> <meta name='viewport' content='width=device-width, initial-scale=1'> <link rel='stylesheet' href=''> </head>";
+        content += "<style>";
+        content += ".redInput {display: flex; justify-content: space-between; width:  60%; margin: .5rem;}";
+        content += "input[type=submit]{background-color: #4CAF50; border: none; color: white; padding: 16px 32px; text-decoration: none; margin: 4px 2px; cursor: pointer;}";
+        content += "</style>";
+        content += "<body>";
+        content += "<h2>Welcome to redDevice WiFi Setup at IP Address:";
         content += ipStr;
-        content += "<p>";
+        content += "</h2>";
+        content += "<h4>Please select your WiFi network and enter the pass key</h4>";
+        content += "<form method='get' action='setting'>";
         content += st;
-        content += "</p><form method='get' action='setting'><label>SSID: </label><input name='ssid' length=32><input name='pass' length=64><input type='submit'></form>";
+        content += "<div class='redInput'><label>Key: </label><input type='password' name='pass' length=64></div>";
+        content += "<input type='submit' value='Enter'>";
+        content += "</form>";
+        content += "</body>";
         content += "</html>";
         server.send(200, "text/html", content);  
     });
@@ -327,51 +347,96 @@ void setup() {
   EEPROM.begin(512);
   //pinMode(0, INPUT);
   pinMode(4, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH); //Turn off
   WiFi.begin();
   delay(1000);
   Serial.println("");
   Serial.println("delay done");
   Serial.println(digitalRead(4));
-   if (digitalRead(4)==false)
+
+  //If button is pressed on power up then start access point for config
+  if (digitalRead(4)==false)
   { 
     Serial.println("button pressed at beginning");
     delay(250);
-     if (digitalRead(4)==false)setupAP();
-     while(1){server.handleClient();delay(10);}
-    
+    if (digitalRead(4)==false)
+      {
+        setupAP();
+      }
+    while(1)
+      {
+        server.handleClient();
+        delay(10);
+      }  
   }
-  else{
-  Serial.println(""); 
-  redEEPromRead();
-  Serial.println("");
-  Serial.print("point ID is: ");
-  Serial.println(pointID);
-  pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output  
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-  pinMode(0, INPUT);
-  delay(1000);
-  reconnect();}
+
+  //Try to connect to WiFi
+  connect2Wifi();
+
+  //If wifi is not connected start access point for config
+  if(!wifiConnected())
+  {
+    digitalWrite(LED_BUILTIN, LOW); //Turn on
+    setupAP();
+    while(1)
+      {
+        server.handleClient();
+        delay(10);
+      }
+  }
+  
+//  if (digitalRead(4)==false)
+//  { 
+//    Serial.println("button pressed at beginning");
+//    delay(250);
+//    if (digitalRead(4)==false)
+//      {
+//        setupAP();
+//      }
+//    while(1)
+//      {
+//        server.handleClient();
+//        delay(10);
+//      }
+//    
+//  }
+//  else
+//  {
+//    Serial.println(""); 
+//    redEEPromRead();
+//    Serial.println("");
+//    Serial.print("point ID is: ");
+//    Serial.println(pointID);
+//    pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output  
+//    connect2Wifi();
+//    client.setServer(mqtt_server, 1883);
+//    client.setCallback(callback);
+//    pinMode(0, INPUT);
+//    delay(1000);
+//    reconnect();
+//   }
   
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
+//  setupAP();
 
-  if (!client.connected() && (WiFi.status() == WL_CONNECTED)) {
-    Serial.println("rwwwiaiau");
-    reconnect();
-  }
- 
-  client.loop();
-  
-   if (digitalRead(0)==false)
-  {
-    Serial.println("button pressed");
-    delay(250);
-     if (digitalRead(0)==false)joinControlNet();
-    
-  }
+//  if (!client.connected() && (WiFi.status() == WL_CONNECTED)) {
+//    Serial.println("rwwwiaiau");
+//    reconnect();
+//  }
+// 
+//  client.loop();
+//  
+//   if (digitalRead(0)==false)
+//  {
+//    Serial.println("button pressed");
+//    delay(250);
+//     if (digitalRead(0)==false)joinControlNet();
+//    
+//  }
 
-   
+    Serial.println("looping");
+    delay(1000);
 }
