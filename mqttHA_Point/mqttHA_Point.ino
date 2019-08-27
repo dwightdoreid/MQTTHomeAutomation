@@ -127,15 +127,16 @@ void setupAP(void) {
      }
   }
   Serial.println(""); 
-  st = "<select name='ssid' size='5'>";
+  st = "<select required name='ssid' size='5'>";
   for (int i = 0; i < n; ++i)
     {
+      st += "<option value=""></option>";
       // Print SSID and RSSI for each network found
       st += "<option value='";
       st += WiFi.SSID(i);
       st += "'>";
       st += WiFi.SSID(i);
-      st += " (";
+      st += " (RSSI: ";
       st += WiFi.RSSI(i);
       st += ")";
       st += (WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*";
@@ -174,6 +175,11 @@ void createWebServer(int webtype)
         content += "<form method='get' action='setting'>";
         content += st;
         content += "<div class='redInput'><label>Key: </label><input type='password' name='pass' length=64></div>";
+        content += "<h4>Select IP Address Mode</h4>";
+        content += "<div><select name='ipMode'>";
+        content += "<option value='dhcp' selected>DHCP</option>";
+        content += "<option value='fixed'>Fixed</option>";
+        content += "</select></div>";
         content += "<input type='submit' value='Enter'>";
         content += "</form>";
         content += "</body>";
