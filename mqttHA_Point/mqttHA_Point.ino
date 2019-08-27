@@ -5,6 +5,11 @@
 #include <PubSubClient.h>
 #include <EEPROM.h>
 
+#define USER_BUTTON 16
+#define AP_LED 0
+#define WIFI_LED 4
+#define SEARCH_LED 5
+
 // Update these with values suitable for your network.
 ESP8266WebServer server(80);
 IPAddress mqtt_server(192,168,0,100);
@@ -17,6 +22,7 @@ const char* ssid = "test";
 const char* passphrase = "testpassword";
 String esid;
 String epass = "";
+String dhcpEnabled = "F";
 
 String st;
 String content;
@@ -31,11 +37,17 @@ char msg[50];
 int value = 0;
 unsigned long startTime;
 long timeHeld;
+
+//Static IP address configuration
+IPAddress staticIP(192, 168, 0, 67); //ESP static ip
+IPAddress gateway(192, 168, 0, 1);   //IP Address of your WiFi Router (Gateway)
+IPAddress subnet(255, 255, 255, 0);  //Subnet mask
+IPAddress dns(8, 8, 8, 8);  //DNS
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void connect2Wifi() {
 
   delay(10);
-  WiFi.begin();
+  //WiFi.begin();
 
   Serial.println("Reading EEPROM ssid");
   
@@ -54,16 +66,37 @@ void connect2Wifi() {
   Serial.print("PASS: ");
   Serial.println(epass);  
   
-   if (wifiConnected())
-   {
-    Serial.println("");
-    Serial.println("Connected to wifi network :/ ");
-    return;
-    } 
+  Serial.print("DHCP Enabled: ");
+  Serial.println(char(EEPROM.read(128)));
+
+  String DHCP_Enabled;
+  DHCP_Enabled = char(EEPROM.read(128));
+  if (DHCP_Enabled == "T")
+  {
+     if (wifiConnect())
+     {
+      Serial.println("");
+      Serial.println("Connected to wifi network :/ ");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+      return;
+      } 
+  }
+  else {
+     if (wifiConnectDHCP())
+     {
+      Serial.println("");
+      Serial.println("Connected to wifi network :/ ");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+      return;
+      } 
+  }
+  
 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool wifiConnected(void) {
+bool wifiConnect(void) {
   WiFi.mode(WIFI_STA);
   int c = 0;
   if ( esid.length() > 1 ) {
@@ -76,6 +109,34 @@ bool wifiConnected(void) {
         }
         if (WiFi.status() == WL_CONNECTED) {
           Serial.println("Connected to wifi network :/ ");
+          digitalWrite(SEARCH_LED, LOW);
+          digitalWrite(WIFI_LED, HIGH);
+          return true; 
+        }
+        
+         
+  }
+  Serial.println("");
+  Serial.println("Connect timed out, opening AP");
+  return false;
+} 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool wifiConnectDHCP(void) {
+  WiFi.mode(WIFI_STA);
+  WiFi.config(staticIP, subnet, gateway, dns);
+  int c = 0;
+  if ( esid.length() > 1 ) {
+        Serial.println("Trying to connect to wifi net..");
+        WiFi.begin(esid.c_str(), epass.c_str());
+        while (WiFi.status() != WL_CONNECTED&&c<20) {
+          delay(500);
+          Serial.print(".");
+          c++;
+        }
+        if (WiFi.status() == WL_CONNECTED) {
+          Serial.println("Connected to wifi network :/ ");
+          digitalWrite(SEARCH_LED, LOW);
+          digitalWrite(WIFI_LED, HIGH);
           return true; 
         }
         
@@ -147,6 +208,8 @@ void setupAP(void) {
   WiFi.softAP(ssid, passphrase, 6);
   Serial.println("softap");
   launchWeb(1);
+  digitalWrite(SEARCH_LED, LOW);
+  digitalWrite(AP_LED, HIGH);
   Serial.println("over");
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,9 +239,9 @@ void createWebServer(int webtype)
         content += st;
         content += "<div class='redInput'><label>Key: </label><input type='password' name='pass' length=64></div>";
         content += "<h4>Select IP Address Mode</h4>";
-        content += "<div><select name='ipMode'>";
-        content += "<option value='dhcp' selected>DHCP</option>";
-        content += "<option value='fixed'>Fixed</option>";
+        content += "<div><select name='dhcpEnable'>";
+        content += "<option value='T' selected>DHCP</option>";
+        content += "<option value='F'>Fixed</option>";
         content += "</select></div>";
         content += "<input type='submit' value='Enter'>";
         content += "</form>";
@@ -189,6 +252,7 @@ void createWebServer(int webtype)
     server.on("/setting", []() {
         String qsid = server.arg("ssid");
         String qpass = server.arg("pass");
+        String qdhcpEnable = server.arg("dhcpEnable");
         if (qsid.length() > 0 && qpass.length() > 0) {
           Serial.println("clearing eeprom");
           for (int i = 0; i < 128; ++i) { EEPROM.write(i, 0); }
@@ -211,6 +275,10 @@ void createWebServer(int webtype)
               Serial.print("Wrote: ");
               Serial.println(qpass[i]); 
             }    
+          Serial.println("writing eeprom DHCP enable:"); 
+          EEPROM.write(128, qdhcpEnable[0]);
+          Serial.print("Wrote: ");
+            Serial.println(qdhcpEnable[0]); 
           EEPROM.commit();
           content = "{\"Success\":\"saved to eeprom... reset to boot into new wifi\"}";
           statusCode = 200;
@@ -352,21 +420,27 @@ void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
   //pinMode(0, INPUT);
-  pinMode(4, INPUT);
+  pinMode(USER_BUTTON, INPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(WIFI_LED, OUTPUT);
+  pinMode(AP_LED, OUTPUT);
+  pinMode(SEARCH_LED, OUTPUT);
+  digitalWrite(WIFI_LED, LOW);
+  digitalWrite(AP_LED, LOW);
+  digitalWrite(SEARCH_LED, HIGH);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off
   WiFi.begin();
   delay(1000);
   Serial.println("");
   Serial.println("delay done");
-  Serial.println(digitalRead(4));
+  Serial.println(digitalRead(USER_BUTTON));
 
   //If button is pressed on power up then start access point for config
-  if (digitalRead(4)==false)
+  if (digitalRead(USER_BUTTON)==false)
   { 
     Serial.println("button pressed at beginning");
     delay(250);
-    if (digitalRead(4)==false)
+    if (digitalRead(USER_BUTTON)==false)
       {
         setupAP();
       }
@@ -381,7 +455,7 @@ void setup() {
   connect2Wifi();
 
   //If wifi is not connected start access point for config
-  if(!wifiConnected())
+  if(!wifiConnect())
   {
     digitalWrite(LED_BUILTIN, LOW); //Turn on
     setupAP();
