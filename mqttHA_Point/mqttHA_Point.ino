@@ -122,8 +122,20 @@ bool wifiConnect(void) {
 } 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool wifiConnectDHCP(void) {
+//  String esubnet="";
+//  Serial.println("Reading EEPROM DHCP subnet"); 
+//  for (int i = 129; i < 133; ++i)
+//  {
+//    esubnet += char(EEPROM.read(i));
+//  }
+  IPAddress estaticIP(EEPROM.read(129),EEPROM.read(130),EEPROM.read(131),EEPROM.read(132));
+  IPAddress esubnet(EEPROM.read(133),EEPROM.read(134),EEPROM.read(135),EEPROM.read(136));
+  IPAddress egateway(EEPROM.read(137),EEPROM.read(138),EEPROM.read(139),EEPROM.read(140));
+  IPAddress edns(EEPROM.read(141),EEPROM.read(142),EEPROM.read(143),EEPROM.read(144));
+  Serial.print("subnet: ");
+  Serial.println(esubnet); 
   WiFi.mode(WIFI_STA);
-  WiFi.config(staticIP, subnet, gateway, dns);
+  WiFi.config(estaticIP, esubnet, egateway, edns);
   int c = 0;
   if ( esid.length() > 1 ) {
         Serial.println("Trying to connect to wifi net..");
@@ -429,6 +441,53 @@ void setup() {
   digitalWrite(AP_LED, LOW);
   digitalWrite(SEARCH_LED, HIGH);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off
+
+  char egIP[16] = "192.168.0.68";
+  char egsubnet[16] = "255.255.255.0";
+  char eggateway[16] = "192.168.0.1";
+  char egdns[16] = "8.8.8.8";
+  char *digits;
+
+  digits = strtok(egIP, ".");
+  int k = 129;
+  while(digits != NULL ) {
+      Serial.println(atoi(digits));   
+      EEPROM.write(k,atoi(digits));
+      k++; 
+      digits = strtok(NULL, ".");
+   }
+   
+  digits = strtok(egsubnet, ".");
+  k = 133;
+  while(digits != NULL ) {
+      Serial.println(atoi(digits));   
+      EEPROM.write(k,atoi(digits));
+      k++; 
+      digits = strtok(NULL, ".");
+   }
+
+  digits = strtok(eggateway, ".");
+  k = 137;
+  while(digits != NULL ) {
+      Serial.println(atoi(digits));   
+      EEPROM.write(k,atoi(digits));
+      k++; 
+      digits = strtok(NULL, ".");
+   }
+
+  digits = strtok(egdns, ".");
+  k = 141;
+  while(digits != NULL ) {
+      Serial.println(atoi(digits));   
+      EEPROM.write(k,atoi(digits));
+      k++; 
+      digits = strtok(NULL, ".");
+   }
+//  for (int i = 129; i < 133; ++i)
+//  {
+//    Serial.println(EEPROM.read(i)); 
+//  }
+  
   WiFi.begin();
   delay(1000);
   Serial.println("");
