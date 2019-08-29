@@ -83,7 +83,7 @@ void connect2Wifi() {
       } 
   }
   else {
-     if (wifiConnectDHCP())
+     if (wifiConnectFixed())
      {
       Serial.println("");
       Serial.println("Connected to wifi network :/ ");
@@ -121,7 +121,7 @@ bool wifiConnect(void) {
   return false;
 } 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool wifiConnectDHCP(void) {
+bool wifiConnectFixed(void) {
 //  String esubnet="";
 //  Serial.println("Reading EEPROM DHCP subnet"); 
 //  for (int i = 129; i < 133; ++i)
@@ -132,6 +132,10 @@ bool wifiConnectDHCP(void) {
   IPAddress esubnet(EEPROM.read(133),EEPROM.read(134),EEPROM.read(135),EEPROM.read(136));
   IPAddress egateway(EEPROM.read(137),EEPROM.read(138),EEPROM.read(139),EEPROM.read(140));
   IPAddress edns(EEPROM.read(141),EEPROM.read(142),EEPROM.read(143),EEPROM.read(144));
+
+  Serial.println("Connecting with fixed IP");
+  Serial.print("IP: ");
+  Serial.println(estaticIP); 
   Serial.print("subnet: ");
   Serial.println(esubnet); 
   WiFi.mode(WIFI_STA);
@@ -251,12 +255,32 @@ void createWebServer(int webtype)
         content += st;
         content += "<div class='redInput'><label>Key: </label><input type='password' name='pass' length=64></div>";
         content += "<h4>Select IP Address Mode</h4>";
-        content += "<div><select name='dhcpEnable'>";
+        content += "<div><select id='dhcpEnable' name='dhcpEnable'>";
         content += "<option value='T' selected>DHCP</option>";
         content += "<option value='F'>Fixed</option>";
         content += "</select></div>";
+        content += "<div id='dhcpConfig' style='display:none'>";
+        content += "<h4>Enter Fixed IP Parameters</h4>";
+        content += "<div class='redInput'>";
+        content += "<label>IP Address: </label>";
+        content += "<input type='text' name='IP' length=64 pattern='((^|\\.)((25[0-5])|(2[0-4]\\d)|(1\\d\\d)|([1-9]?\\d))){4}$'>";
+        content += "</div>";
+        content += "<div class='redInput'>";
+        content += "<label>Subnet Mask: </label>";
+        content += "<input type='text' name='subnet' length=64 pattern='((^|\\.)((25[0-5])|(2[0-4]\\d)|(1\\d\\d)|([1-9]?\\d))){4}$'>";
+        content += "</div>";
+        content += "<div class='redInput'>";
+        content += "<label>Gateway: </label>";
+        content += "<input type='text' name='gateway' length=64 pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>";
+        content += "</div>";
+        content += "<div class='redInput'>";
+        content += "<label>DNS Server: </label>";
+        content += "<input type='text' name='dns' length=64 pattern='((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$'>";
+        content += "</div>";
+        content += "</div>";
         content += "<input type='submit' value='Enter'>";
         content += "</form>";
+        content += "<script> function ipModeShow(){ if(document.getElementById('dhcpEnable').value == 'F'){     document.getElementById('dhcpConfig').style.display='block'; } else{     document.getElementById('dhcpConfig').style.display='none'; } } document.getElementById('dhcpEnable').addEventListener('change',ipModeShow);  </script>";
         content += "</body>";
         content += "</html>";
         server.send(200, "text/html", content);  
@@ -265,6 +289,7 @@ void createWebServer(int webtype)
         String qsid = server.arg("ssid");
         String qpass = server.arg("pass");
         String qdhcpEnable = server.arg("dhcpEnable");
+        
         if (qsid.length() > 0 && qpass.length() > 0) {
           Serial.println("clearing eeprom");
           for (int i = 0; i < 128; ++i) { EEPROM.write(i, 0); }
@@ -290,7 +315,44 @@ void createWebServer(int webtype)
           Serial.println("writing eeprom DHCP enable:"); 
           EEPROM.write(128, qdhcpEnable[0]);
           Serial.print("Wrote: ");
-            Serial.println(qdhcpEnable[0]); 
+          Serial.println(qdhcpEnable[0]); 
+
+          
+          char buf[16];
+          char *digits;
+          int k;
+          
+          String qIP = server.arg("IP");
+          qIP.toCharArray(buf,15);          
+          digits = strtok(buf, ".");
+          k = 129;
+          while(digits != NULL ) {
+              Serial.println(atoi(digits));   
+              EEPROM.write(k,atoi(digits));
+              k++; 
+              digits = strtok(NULL, ".");
+           }
+
+          String qsubnet = server.arg("subnet");
+          qsubnet.toCharArray(buf,15);          
+          digits = strtok(buf, ".");
+          k = 133;
+          while(digits != NULL ) {
+              Serial.println(atoi(digits));   
+              EEPROM.write(k,atoi(digits));
+              k++; 
+              digits = strtok(NULL, ".");
+           }
+
+           
+
+//            for (int i = 0; i < qIP.length(); ++i)
+//            {
+//              EEPROM.write(129+i, qIP[i]);
+//              Serial.print("Wrote: ");
+//              Serial.println(qIP[i]); 
+//            } 
+            
           EEPROM.commit();
           content = "{\"Success\":\"saved to eeprom... reset to boot into new wifi\"}";
           statusCode = 200;
@@ -442,29 +504,29 @@ void setup() {
   digitalWrite(SEARCH_LED, HIGH);
   digitalWrite(LED_BUILTIN, HIGH); //Turn off
 
-  char egIP[16] = "192.168.0.68";
-  char egsubnet[16] = "255.255.255.0";
+//  char egIP[16] = "192.168.0.68";
+//  char egsubnet[16] = "255.255.255.0";
   char eggateway[16] = "192.168.0.1";
   char egdns[16] = "8.8.8.8";
   char *digits;
-
-  digits = strtok(egIP, ".");
-  int k = 129;
-  while(digits != NULL ) {
-      Serial.println(atoi(digits));   
-      EEPROM.write(k,atoi(digits));
-      k++; 
-      digits = strtok(NULL, ".");
-   }
+  int k;
+//  digits = strtok(egIP, ".");
+//  int k = 129;
+//  while(digits != NULL ) {
+//      Serial.println(atoi(digits));   
+//      EEPROM.write(k,atoi(digits));
+//      k++; 
+//      digits = strtok(NULL, ".");
+//   }
    
-  digits = strtok(egsubnet, ".");
-  k = 133;
-  while(digits != NULL ) {
-      Serial.println(atoi(digits));   
-      EEPROM.write(k,atoi(digits));
-      k++; 
-      digits = strtok(NULL, ".");
-   }
+//  digits = strtok(egsubnet, ".");
+//  k = 133;
+//  while(digits != NULL ) {
+//      Serial.println(atoi(digits));   
+//      EEPROM.write(k,atoi(digits));
+//      k++; 
+//      digits = strtok(NULL, ".");
+//   }
 
   digits = strtok(eggateway, ".");
   k = 137;
