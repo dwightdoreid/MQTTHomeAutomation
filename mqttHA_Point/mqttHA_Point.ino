@@ -4,6 +4,7 @@
 #include <ESP8266WebServer.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
+#include "DHT.h"
 
 #define USER_BUTTON 16
 #define AP_LED 0
@@ -37,6 +38,9 @@ char msg[50];
 int value = 0;
 unsigned long startTime;
 long timeHeld;
+
+//Temperature Sensor Config
+DHT dht(2, DHT22);
 
 //Static IP address configuration
 IPAddress staticIP(192, 168, 0, 67); //ESP static ip
@@ -440,6 +444,21 @@ void createWebServer(int webtype)
       digitalWrite(LED_BUILTIN, HIGH);
       server.send(200, "application/json", "{\"Response\":\"LED Off\"}");
     });
+
+    server.on("/temperature", [](){
+      float temperature = dht.readTemperature();
+      //server.send(200, "application/json", "{\"Response\":\"LED Off\"}");
+//      Serial.print(F("%  Temperature: "));
+//      Serial.print(temperature);
+      server.send(200, "application/json", "{\"Response\":\"" + String(temperature) + "\"}");      
+    });
+    server.on("/humidity", [](){
+      float humidity = dht.readHumidity();
+      //server.send(200, "application/json", "{\"Response\":\"LED Off\"}");
+//      Serial.print(F("%  Temperature: "));
+//      Serial.print(temperature);
+      server.send(200, "application/json", "{\"Response\":\"" + String(humidity) + "\"}");      
+    });
   }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -554,6 +573,7 @@ void reconnect() {
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
+  dht.begin();
   //pinMode(0, INPUT);
   pinMode(USER_BUTTON, INPUT);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -682,8 +702,7 @@ void setup() {
 //    pinMode(0, INPUT);
 //    delay(1000);
 //    reconnect();
-//   }
-  
+//   }  
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
