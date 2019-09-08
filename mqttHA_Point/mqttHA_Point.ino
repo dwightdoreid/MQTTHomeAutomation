@@ -18,7 +18,7 @@ String pointID;
 char red[5];
 const char* mqttUser = "mqttUser";
 const char* mqttPw = "mqttuser";
-const char* ssid = "test";
+const char* ssid = "redDevice";
 const char* passphrase = "testpassword";
 String esid;
 String epass = "";
@@ -363,21 +363,82 @@ void createWebServer(int webtype)
         }
         server.send(statusCode, "application/json", content);
     });
-  } else if (webtype == 0) {
+  }
+//............................................................................................................................................  
+  else if (webtype == 0) {
     Serial.println("");
     Serial.println("webtype 0 selected");
     server.on("/", []() {
+      content = "<!DOCTYPE HTML>";
+      content += "<html>";
+      content += "<head> <meta charset='utf-8'> <meta http-equiv='X-UA-Compatible' content='IE=edge'> <title></title> <meta name='description' content=''> <meta name='viewport' content='width=device-width, initial-scale=1'> <link rel='stylesheet' href=''> </head>";
+      content += "<style>";
+      content += ".redInput {display: flex; justify-content: space-between; width:  60%; margin: .5rem;}";
+      content += "input[type=submit]{background-color: #4CAF50; border: none; color: white; padding: 16px 32px; text-decoration: none; margin: 4px 2px; cursor: pointer;}";
+      content += "</style>";
+      content += "<body>";
+      content += "<div><h2>Welcome to redDevice</h2></div>";
+      content += "<div><button id ='onButton' style='background:'#f5f5f0' onclick='turnOn()'>ON</button></div>";
+      content += "<div><button id ='offButton' style='background:'#f5f5f0' onclick='turnOff()'>OFF</button></div>";
+      content += "<script>";
+      content += " function turnOn(){";
+      content += " var xhttp = new XMLHttpRequest();";
+      content += " xhttp.onreadystatechange = function() {";
+      content += "     if (this.readyState == 4 && this.status == 200) {";
+      content += "        document.getElementById('onButton').style.background = '#f5f5f0';";
+      content += "        document.getElementById('offButton').style.background = '#a3a375';";
+      content += "     }";
+      content += " };";
+      content += " xhttp.open('GET', 'http://192.168.0.67/on', true);";
+      content += " xhttp.send();";
+      content += " }";
+      content += " function turnOff(){";
+      content += " var xhttp = new XMLHttpRequest();";
+      content += " xhttp.onreadystatechange = function() {";
+      content += "     if (this.readyState == 4 && this.status == 200) {";
+      content += "        document.getElementById('onButton').style.background = '#a3a375';";
+      content += "        document.getElementById('offButton').style.background = '#f5f5f0';";
+      content += "     }";
+      content += " };";
+      content += " xhttp.open('GET', 'http://192.168.0.67/off', true);";
+      content += " xhttp.send();";
+      content += " }";
+      content += "</script>";
+      content += "</body>";
+      content += "</html>";
+      server.send(200, "text/html", content);
+    });
+    server.on("/ip_address", []() {
       IPAddress ip = WiFi.localIP();
       String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
       server.send(200, "application/json", "{\"IP\":\"" + ipStr + "\"}");
     });
-    server.on("/cleareeprom", []() {
+    server.on("/clear_eeprom", []() {
       content = "<!DOCTYPE HTML>\r\n<html>";
       content += "<p>Clearing the EEPROM</p></html>";
       server.send(200, "text/html", content);
       Serial.println("clearing eeprom");
       for (int i = 0; i < 128; ++i) { EEPROM.write(i, 0); }
       EEPROM.commit();
+    });
+    server.on("/blink", []() {
+      //server.send(200, "application/json", "{\"Response\":\"Blinking\"}");
+      for (int cnt =0;cnt<=10;cnt++)
+      {
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+      }
+      server.send(200, "application/json", "{\"Response\":\"Blinked\"}");
+    });
+    server.on("/on", []() {
+      digitalWrite(LED_BUILTIN, LOW);
+      server.send(200, "application/json", "{\"Response\":\"LED On\"}");
+    });
+    server.on("/off", []() {
+      digitalWrite(LED_BUILTIN, HIGH);
+      server.send(200, "application/json", "{\"Response\":\"LED Off\"}");
     });
   }
 }
@@ -506,10 +567,10 @@ void setup() {
 
 //  char egIP[16] = "192.168.0.68";
 //  char egsubnet[16] = "255.255.255.0";
-  char eggateway[16] = "192.168.0.1";
-  char egdns[16] = "8.8.8.8";
-  char *digits;
-  int k;
+//  char eggateway[16] = "192.168.0.1";
+//  char egdns[16] = "8.8.8.8";
+//  char *digits;
+//  int k;
 //  digits = strtok(egIP, ".");
 //  int k = 129;
 //  while(digits != NULL ) {
@@ -528,29 +589,29 @@ void setup() {
 //      digits = strtok(NULL, ".");
 //   }
 
-  digits = strtok(eggateway, ".");
-  k = 137;
-  while(digits != NULL ) {
-      Serial.println(atoi(digits));   
-      EEPROM.write(k,atoi(digits));
-      k++; 
-      digits = strtok(NULL, ".");
-   }
-
-  digits = strtok(egdns, ".");
-  k = 141;
-  while(digits != NULL ) {
-      Serial.println(atoi(digits));   
-      EEPROM.write(k,atoi(digits));
-      k++; 
-      digits = strtok(NULL, ".");
-   }
+//  digits = strtok(eggateway, ".");
+//  k = 137;
+//  while(digits != NULL ) {
+//      Serial.println(atoi(digits));   
+//      EEPROM.write(k,atoi(digits));
+//      k++; 
+//      digits = strtok(NULL, ".");
+//   }
+//
+//  digits = strtok(egdns, ".");
+//  k = 141;
+//  while(digits != NULL ) {
+//      Serial.println(atoi(digits));   
+//      EEPROM.write(k,atoi(digits));
+//      k++; 
+//      digits = strtok(NULL, ".");
+//   }
 //  for (int i = 129; i < 133; ++i)
 //  {
 //    Serial.println(EEPROM.read(i)); 
 //  }
   
-  WiFi.begin();
+//  WiFi.begin();
   delay(1000);
   Serial.println("");
   Serial.println("delay done");
@@ -586,7 +647,12 @@ void setup() {
         delay(10);
       }
   }
-  
+  launchWeb(0);
+   while(1)
+      {
+        server.handleClient();
+        delay(10);
+      }
 //  if (digitalRead(4)==false)
 //  { 
 //    Serial.println("button pressed at beginning");
